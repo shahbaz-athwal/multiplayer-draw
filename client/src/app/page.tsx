@@ -2,12 +2,12 @@
 import { useDraw } from "@/hooks/useDraw";
 
 const Page = () => {
-  const { canvasRef, onMouseDown } = useDraw(drawLine);
+  const { canvasRef, onMouseDown, clear } = useDraw(drawLine);
 
   function drawLine({ ctx, currentPoint, prevPoint }: Draw) {
     const { x: currX, y: currY } = currentPoint;
     const color = "#000000";
-    const lineWidth = 5;
+    const lineWidth = 50;
 
     let startPoint = prevPoint ?? currentPoint;
     ctx.beginPath();
@@ -22,13 +22,18 @@ const Page = () => {
     ctx.fill();
   }
   return (
-    <div className="flex justify-center w-screen h-screen items-center">
+    <div className='w-screen h-screen bg-white flex justify-center items-center'>
+      <div className='flex flex-col gap-10 pr-10'>
+        <button type='button' className='p-2 rounded-md border border-black' onClick={clear}>
+          Clear canvas
+        </button>
+      </div>
       <canvas
-        onMouseDown={onMouseDown}
         ref={canvasRef}
+        onMouseDown={onMouseDown}
         width={750}
         height={750}
-        className="border border-black rounded-md"
+        className='border border-black rounded-md'
       />
     </div>
   );
