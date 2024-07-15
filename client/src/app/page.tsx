@@ -1,26 +1,55 @@
 "use client";
 import { useDraw } from "@/hooks/useDraw";
+import { drawLine } from "@/utils/drawLine";
+import { useEffect } from "react";
+import { io } from "socket.io-client";
+
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_SERVER_URL as string);
+
 
 const Page = () => {
-  const { canvasRef, onMouseDown, clear } = useDraw(drawLine);
+  const { canvasRef, onMouseDown, clear } = useDraw(createLine)
 
-  function drawLine({ ctx, currentPoint, prevPoint }: Draw) {
-    const { x: currX, y: currY } = currentPoint;
-    const color = "#000000";
-    const lineWidth = 50;
+  useEffect(() => {
+    const ctx = canvasRef.current?.getContext('2d')
 
-    let startPoint = prevPoint ?? currentPoint;
-    ctx.beginPath();
-    ctx.lineWidth = lineWidth;
-    ctx.strokeStyle = color;
-    ctx.moveTo(startPoint.x, startPoint.y);
-    ctx.lineTo(currX, currY);
-    ctx.stroke();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(startPoint.x, startPoint.y, 2, 0, 2 * Math.PI);
-    ctx.fill();
+    socket.emit('client-ready')
+
+    socket.on('get-canvas-state', () => {
+      if (!canvasRef.current?.toDataURL()) return
+      console.log('sending canvas state')
+      socket.emit('canvas-state', canvasRef.current.toDataURL())
+    })
+
+    socket.on('canvas-state-from-server', (state: string) => {
+      console.log('I received the state')
+      const img = new Image()
+      img.src = state
+      img.onload = () => {
+        ctx?.drawImage(img, 0, 0)
+      }
+    })
+
+    socket.on('draw-line', ({ prevPoint, currentPoint }: Draw) => {
+      if (!ctx) return console.log('no ctx here')
+      drawLine({ prevPoint, currentPoint, ctx })
+    })
+
+    socket.on('clear', clear)
+
+    return () => {
+      socket.off('draw-line')
+      socket.off('get-canvas-state')
+      socket.off('canvas-state-from-server')
+      socket.off('clear')
+    }
+  }, [canvasRef])
+
+  function createLine({ prevPoint, currentPoint, ctx }: Draw) {
+    socket.emit('draw-line', { prevPoint, currentPoint })
+    drawLine({ prevPoint, currentPoint, ctx })
   }
+
   return (
     <div className='w-screen h-screen bg-white flex justify-center items-center'>
       <div className='flex flex-col gap-10 pr-10'>
